@@ -1,0 +1,44 @@
+
+[
+    {
+        "name": "K",
+        "short_desc": "dimensionality of embedding",
+        "default": 10, 
+        "type": "categorical",
+        "range_low": "n/a",
+        "range_high": "n/a",
+        "categorical_vals": [5, 10, 20, 50, 100],
+        "search_type": "loguniform"
+
+    },
+    {
+        "name": "l2_reg",
+        "short_desc": "l2_reg in matrix fact embeddings",
+        "default": 0.0, 
+        "type": "real",
+        "range_low": 1e-9,
+        "range_high": 1e-1,
+        "search_type": "loguniform"
+
+    },
+    {
+        "name": "lr",
+        "short_desc": "learning rate for optimizer",
+        "default": 0.08, 
+        "type": "real",
+        "range_low": 1e-5,
+        "range_high": 1e-1,
+        "search_type": "loguniform"
+
+    },
+    {
+        "name": "momentum",
+        "short_desc": "momentum for sgd optimizer",
+        "default": 0.9, 
+        "type": "real",
+        "range_low": 1e-5,
+        "range_high": 1e-1,
+        "search_type": "loguniform"
+
+    }
+]
