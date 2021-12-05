@@ -8,6 +8,7 @@ from sklearn.utils import shuffle
 from algorithm.matrix_fact import MatrixFactorizer
 from algorithm.preprocess_pipe import get_preprocess_pipeline
 import algorithm.model_config as cfg
+import algorithm.scoring as scoring
 import tensorflow as tf
 
 hp_f_path = os.path.join(os.path.dirname(__file__), 'hyperparameters.json')
@@ -162,12 +163,36 @@ def predict_with_model(test_data_path, model_path, output_path):
     return 0
 
 
-
-
 def load_model_and_preprocessor(model_path):
+    if not os.path.exists(os.path.join(model_path, cfg.PREPROCESSOR_FNAME)):
+        err_msg = f"No trained model found. Expected to find model files in path: {model_path}"
+        print(err_msg)
+        return err_msg
+
     preprocess_pipe = joblib.load(os.path.join(model_path, cfg.PREPROCESSOR_FNAME))
     mf = MatrixFactorizer.load(model_path)
     return mf, preprocess_pipe
+
+
+def score_predictions(output_path): 
+    pred_file = os.path.join(output_path, cfg.PREDICTIONS_FNAME)
+    if not os.path.exists(pred_file):
+        err_msg = f"No predictions file found. Expected to find: {pred_file}"
+        print(err_msg)
+        return err_msg
+
+
+    df = pd.read_csv(pred_file)
+
+    loss_types = ['mse', 'rmse', 'mae', 'nmae', 'smape', 'r2']
+    scores_dict = scoring.get_loss_multiple(df[cfg.RATING_COL], df[cfg.PRED_RATING_COL], loss_types)
+
+    with open(os.path.join(output_path, cfg.SCORING_FNAME), 'w') as f: 
+        f.write("Metric,Value\n")
+        for loss in loss_types:
+            f.write( f"{loss},{round(scores_dict[loss], 4)}\n" )
+
+    return 0
 
 
 if __name__ == '__main__': 

@@ -2,6 +2,7 @@ import flask
 import os, sys 
 from train import train 
 from predict import predict
+from score import score
 
 app = flask.Flask(__name__)
 
@@ -34,10 +35,23 @@ def train_endpoint():
 @app.route("/predict", methods=["GET"])
 def predict_endpoint():
     resp = predict()
-    status = 200 if resp==0 else 404
-    return flask.Response(response="Predictions completed successfully.", status=status, mimetype="application/json")
+    if resp is 0: 
+        status = 200 
+        resp = "Predictions completed successfully."
+    else:
+        status = 404
+    return flask.Response(response=resp, status=status, mimetype="application/json")
 
 
+@app.route("/score", methods=["GET"])
+def score_endpoint():
+    resp = score()
+    if resp is 0: 
+        status = 200 
+        resp = "Scoring completed successfully."
+    else:
+        status = 404
+    return flask.Response(response=resp, status=status, mimetype="application/json")
 
 
 

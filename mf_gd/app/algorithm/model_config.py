@@ -28,3 +28,6 @@ MODEL_PARAMS_FNAME = 'model_params'
 
 # Predictions file name
 PREDICTIONS_FNAME = 'predictions.csv'
+
+# Scoring file name
+SCORING_FNAME = 'scores.csv'
