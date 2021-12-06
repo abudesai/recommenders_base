@@ -2,7 +2,7 @@
 [
     {
         "name": "K",
-        "short_desc": "dimensionality of embedding",
+        "short_desc": "dimensionality of embedding - default 10",
         "default": 10, 
         "type": "categorical",
         "range_low": "n/a",
@@ -11,7 +11,7 @@
     },
     {
         "name": "l2_reg",
-        "short_desc": "l2_reg in matrix fact embeddings",
+        "short_desc": "l2_reg in matrix fact embeddings - default 0.0",
         "default": 0.0, 
         "type": "real",
         "range_low": 1e-9,
@@ -21,7 +21,7 @@
     },
     {
         "name": "lr",
-        "short_desc": "learning rate for optimizer",
+        "short_desc": "learning rate for optimizer - default 0.08",
         "default": 0.08, 
         "type": "real",
         "range_low": 8e-5,
@@ -31,7 +31,7 @@
     },
     {
         "name": "momentum",
-        "short_desc": "momentum for sgd optimizer",
+        "short_desc": "momentum for sgd optimizer - default 0.9",
         "default": 0.9, 
         "type": "real",
         "range_low": 0.9,

@@ -35,7 +35,7 @@ def train_endpoint():
 @app.route("/predict", methods=["GET"])
 def predict_endpoint():
     resp = predict()
-    if resp is 0: 
+    if resp == 0: 
         status = 200 
         resp = "Predictions completed successfully."
     else:
@@ -46,7 +46,7 @@ def predict_endpoint():
 @app.route("/score", methods=["GET"])
 def score_endpoint():
     resp = score()
-    if resp is 0: 
+    if resp == 0: 
         status = 200 
         resp = "Scoring completed successfully."
     else:

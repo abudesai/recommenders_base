@@ -17,12 +17,11 @@ from skopt.utils import use_named_args
 from skopt import Optimizer # for the optimization
 from joblib import Parallel, delayed # for the parallelization
 
-import tensorflow as tf
-
 # HPO
 num_CV_folds = 3
 num_initial_points = 5
-num_searches = 60
+num_searches = 45
+max_threads = 10
 
 
 def get_hp_opt_space(hps): 
@@ -54,11 +53,8 @@ def get_hp_opt_space(hps):
 
 
 def get_num_cpus_to_use():
-    num_cpus_to_use = min(5, max(multiprocessing.cpu_count() - 2, 1))
+    num_cpus_to_use = min(max_threads, max(multiprocessing.cpu_count() - 2, 1))
     print("num_cpus_to_use: ", num_cpus_to_use)
-
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction = (0.5 / num_cpus_to_use))
-    tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
     return num_cpus_to_use 
 
 
@@ -79,7 +75,10 @@ def get_cv_fold_data(X, y, n_folds):
 
 def run_hpo(train_data_path, output_path): 
 
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+    start = time.time()
+
+    # multiprocessing doesnt play nice with gpu so disable it. 
+    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     # get training data
     orig_train_data = model_funcs.get_data(train_data_path)
@@ -116,20 +115,26 @@ def run_hpo(train_data_path, output_path):
     num_loops = int(np.ceil(num_searches / num_cpus_to_use))
     # ------------------------------------------------------------------------
     # define objective
-    def objective(sampled_hps_list): 
-        import tensorflow as tf
+    def objective(sampled_hps_list):         
         hyper_params = collect_sampled_hps(sampled_hps_list, hps)
         losses = []
         for X_train, X_valid, y_train, y_valid in data_folds: 
             model_params = { **data_based_params, **hyper_params }
-            model, _ = model_funcs.get_trained_model(X_train, y_train, model_params)
+            model, history = model_funcs.get_trained_model(X_train, y_train, model_params)
 
+            last_loss = history.history['loss'][-1]
+            if np.isnan(last_loss):
+                losses.append(1.0e9)
+                break
+            
             # pred and score on validation data
             y_valid_pred = model_funcs.get_prediction_for_batch(model, X_valid)
-            loss = scoring.get_loss(y_valid, y_valid_pred)
+            loss = scoring.get_loss(y_valid, y_valid_pred)            
             losses.append(loss)
 
-        return np.mean(losses)
+        mean_loss = np.mean(losses)
+        print("mean loss = ", mean_loss, hyper_params)
+        return mean_loss
 
     # ------------------------------------------------------------------------
     # x and y in this context mean something different - x refers to hyper-parameter set, and y refers to 
@@ -146,7 +151,7 @@ def run_hpo(train_data_path, output_path):
             x.append(pt)
             if len(x) == num_cpus_to_use: break
 
-        print('hp points:', x)
+        # print('hp points:', x)
         y = Parallel(n_jobs=num_cpus_to_use)(delayed(objective)(v) for v in x)  # evaluate points in parallel
         optimizer.tell(x, y)
     
@@ -157,9 +162,12 @@ def run_hpo(train_data_path, output_path):
     ], axis=1)
     dim_names = collect_hp_names(hps)
     hpo_results.columns = dim_names + [f'val_{cfg.loss_metric}']
-    hpo_results.sort_values(by=[f'val_{cfg.loss_metric}'])
+    hpo_results.sort_values(by=[f'val_{cfg.loss_metric}'], inplace=True)
     hpo_results.to_csv(os.path.join(output_path, cfg.HPO_RESULTS_FNAME), index=False)
-    # ------------------------------------------------------------------------
+    print(hpo_results.head())
+    # ------------------------------------------------------------------------    
+    end = time.time()
+    print(f"Total HPO time: {np.round((end - start)/60.0, 2)} minutes") 
 
 
 def collect_sampled_hps(sampled_hps_list, hps):

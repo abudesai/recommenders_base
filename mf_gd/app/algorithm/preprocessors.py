@@ -21,7 +21,7 @@ class UserItemIdMapper(BaseEstimator, TransformerMixin):
 
         self.user_ids = data[[self.user_id_col]].drop_duplicates()
 
-        self.user_ids = self.user_ids.sample(n=10000, replace=False, random_state=42)
+        # self.user_ids = self.user_ids.sample(n=20000, replace=False, random_state=42)        
         
         self.user_ids[self.user_id_int_col] = self.user_ids[self.user_id_col].factorize()[0]
 
@@ -31,7 +31,8 @@ class UserItemIdMapper(BaseEstimator, TransformerMixin):
 
         idx = data[self.user_id_col].isin(self.users_orig_to_new.keys())
         filtered_data = data.loc[idx]
-        self.item_ids = filtered_data[[self.item_id_col]].drop_duplicates()
+        self.item_ids = filtered_data[[self.item_id_col]].drop_duplicates()        
+        
         self.item_ids[self.item_id_int_col] = self.item_ids[self.item_id_col].factorize()[0]
 
         self.items_orig_to_new = dict( zip(self.item_ids[self.item_id_col], 
@@ -44,7 +45,7 @@ class UserItemIdMapper(BaseEstimator, TransformerMixin):
     def transform(self, df): 
         idx1 = df[self.user_id_col].isin(self.users_orig_to_new.keys())
         idx2 = df[self.item_id_col].isin(self.items_orig_to_new.keys())
-        df = df.loc[idx1 & idx2].copy()
+        df = df.loc[idx1 & idx2].copy()        
 
         df[self.user_id_int_col] = df[self.user_id_col].map(self.users_orig_to_new)
         df[self.item_id_int_col] = df[self.item_id_col].map(self.items_orig_to_new)
@@ -81,6 +82,7 @@ class RatingsScaler(BaseEstimator, TransformerMixin):
     def inverse_transform(self, data): 
         rescaled_data = self.scaler.inverse_transform(data)
         return rescaled_data
+
 
 
 class SparseMatrixCreator(BaseEstimator, TransformerMixin):  

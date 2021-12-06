@@ -42,7 +42,6 @@ class MatrixFactorizer():
         self.model = self.build_model()
         self.model.compile(
             loss=cfg.loss_metric,
-            # optimizer='adam',
             # optimizer=Adam(learning_rate=self.lr),
             optimizer=SGD(learning_rate=self.lr, momentum=self.momentum),
             metrics=['mae'],

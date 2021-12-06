@@ -50,25 +50,22 @@ def get_data_based_model_params(data):
     return {"N":N, "M": M}
 
 
+
 def get_trained_model(X, y, model_params): 
-    # Create matrix factorization model     
-    print('Instantiating matrix factorizer ...')   
-
+    print('Training matrix factorizer ...')        
+    # Create and train matrix factorization model     
     mf = MatrixFactorizer( **model_params )
-    # ------------------------------------------------------------------------
-    # Fit the model to training data 
-    print('Fitting matrix factorizer ...')
-
     history = mf.fit(
         X = X,
         y = y,
         validation_split=cfg.VALIDATION_SPLIT,
         batch_size = 128, 
-        epochs = 1,
-        verbose = 0, 
-    )
-
+        epochs = 30,
+        verbose = 1, 
+    )    
+    print('Finished training matrix factorizer ...')
     return mf, history
+    
 
 
 def preprocess_data(data):
@@ -125,6 +122,7 @@ def get_prediction_for_batch(model, X):
     return model.predict( X )
 
 
+
 def predict_with_model(test_data_path, model_path, output_path):
     # get test data
     test_data = get_data(test_data_path) 
@@ -139,7 +137,9 @@ def predict_with_model(test_data_path, model_path, output_path):
     proc_test_data = preprocess_pipe.transform(test_data)
     print("proc_test_data shape: ", proc_test_data.shape)
 
-    preds = get_prediction_for_batch(mf, proc_test_data )
+    X = proc_test_data[[cfg.USER_ID_INT_COL, cfg.ITEM_ID_INT_COL]]
+
+    preds = get_prediction_for_batch(mf, X )
 
     print("preds shape: ", preds.shape)
 
@@ -177,7 +177,7 @@ def score_predictions(output_path):
 
     loss_types = ['mse', 'rmse', 'mae', 'nmae', 'smape', 'r2']
     scores_dict = scoring.get_loss_multiple(df[cfg.RATING_COL], df[cfg.PRED_RATING_COL], loss_types)
-
+    print("score", scores_dict)
     with open(os.path.join(output_path, cfg.SCORING_FNAME), 'w') as f: 
         f.write("Attribute,Value\n")
         f.write(f"Model_Name,{cfg.MODEL_NAME}\n")
@@ -207,7 +207,7 @@ if __name__ == '__main__':
     model_path = './delete/'
     logs_path = './delete/'
 
-    train_model(train_data_path, model_path, logs_path)
+    train_model(train_data_path, model_path, logs_path) 
     
 
 
