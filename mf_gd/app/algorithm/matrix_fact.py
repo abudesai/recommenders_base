@@ -41,7 +41,7 @@ class MatrixFactorizer():
 
         self.model = self.build_model()
         self.model.compile(
-            loss='mse',
+            loss=cfg.loss_metric,
             # optimizer='adam',
             # optimizer=Adam(learning_rate=self.lr),
             optimizer=SGD(learning_rate=self.lr, momentum=self.momentum),
@@ -66,17 +66,16 @@ class MatrixFactorizer():
         return model
 
 
-    def fit(self, user_ids, item_ids, ratings, validation_data=None, 
-            batch_size=256, epochs=100, verbose=0): 
+    def fit(self, X, y, validation_split=None, batch_size=256, epochs=100, verbose=0): 
                 
-        early_stop_loss = 'val_loss'
+        early_stop_loss = 'val_loss' if validation_split is not None else 'loss'
         early_stop_callback = EarlyStopping(monitor=early_stop_loss, min_delta = 1e-4, patience=3) 
         infcost_stop_callback = InfCostStopCallback()
 
         history = self.model.fit(
-                x = [user_ids, item_ids],
-                y = ratings, 
-                validation_data = validation_data,
+                x = [ X.iloc[:, 0], X.iloc[:, 1] ],
+                y = y, 
+                validation_split = validation_split,
                 batch_size = batch_size,
                 epochs=epochs,
                 verbose=verbose,
@@ -86,8 +85,8 @@ class MatrixFactorizer():
         return history
 
 
-    def predict(self, user_ids, item_ids): 
-        preds = self.model.predict([user_ids, item_ids])
+    def predict(self, X): 
+        preds = self.model.predict([ X.iloc[:, 0], X.iloc[:, 1] ])
         return preds 
 
     def summary(self):

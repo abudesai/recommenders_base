@@ -3,3 +3,5 @@ data
 ml_vol
 
 *.*checkpoints
+__pycache__/
+*.pyc

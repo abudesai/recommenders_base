@@ -14,35 +14,25 @@ import tensorflow as tf
 hp_f_path = os.path.join(os.path.dirname(__file__), 'hyperparameters.json')
 
 
-def set_logging(logs_path):
-    # get TF logger
-    log = logging.getLogger('tensorflow')
-    log.setLevel(logging.DEBUG)
-
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # create file handler which logs even debug messages
-    fh = logging.FileHandler(os.path.join(logs_path, 'tensorflow.log'))
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(formatter)
-    log.addHandler(fh)
-
-
-def set_seeds(seed_value=42):   
+def set_seeds(seed_value=42):
+    if type(seed_value) == int or type(seed_value) == float:          
         os.environ['PYTHONHASHSEED']=str(seed_value)
         random.seed(seed_value)
         np.random.seed(seed_value)
         tf.random.set_seed(seed_value)
 
 
-def get_hyper_parameters():
+def get_hyper_parameters_json():
     try:
         hps = json.load(open(hp_f_path))        
     except: 
-        raise Exception(f"Error reading hyperparameters file at: {hp_f_path}")    
-    hp_dict = { hp["name"]:hp["default"] for hp in hps }
-    return hp_dict
+        raise Exception(f"Error reading hyperparameters file at: {hp_f_path}")   
+    return hps
+
+
+def get_default_hps(hps):
+    default_hps = { hp["name"]:hp["default"] for hp in hps }
+    return default_hps
 
 
 def get_data(data_path): 
@@ -51,72 +41,72 @@ def get_data(data_path):
         return data
     except: 
         raise Exception(f"Error reading data at: {data_path}")
-    
+
+
+def get_data_based_model_params(data): 
+    N = int(data.iloc[:, 0].max()+1)
+    M = int(data.iloc[:, 1].max()+1)
+    print(f"Found # Users N = {N}; # Items M = {M} in training data")
+    return {"N":N, "M": M}
+
+
+def get_trained_model(X, y, model_params): 
+    # Create matrix factorization model     
+    print('Instantiating matrix factorizer ...')   
+
+    mf = MatrixFactorizer( **model_params )
+    # ------------------------------------------------------------------------
+    # Fit the model to training data 
+    print('Fitting matrix factorizer ...')
+
+    history = mf.fit(
+        X = X,
+        y = y,
+        validation_split=cfg.VALIDATION_SPLIT,
+        batch_size = 128, 
+        epochs = 1,
+        verbose = 0, 
+    )
+
+    return mf, history
+
+
+def preprocess_data(data):
+    print('Preprocessing train_data ...')
+    preprocess_pipe = get_preprocess_pipeline()
+    train_data = preprocess_pipe.fit_transform(data)
+    print('processed train_data shape:',  train_data.shape)
+
+    X = train_data[[cfg.USER_ID_INT_COL, cfg.ITEM_ID_INT_COL]]
+    y = train_data[[cfg.RATING_INT_COL]]
+    return X, y, preprocess_pipe
+
 
 
 def train_model(train_data_path, model_path, logs_path, random_state=42): 
 
     print("Starting the training process...")
+    start = time.time()
 
     # set seeds if specified
-    if type(random_state) == int or type(random_state) == float:
-        set_seeds(seed_value = random_state)
-
-    # get default hyper-parameters
-    hp_dict = get_hyper_parameters()
+    set_seeds(seed_value = random_state)        
 
     # get training data
     orig_train_data = get_data(train_data_path)
-
-    # set logging
-    set_logging(logs_path)
     
-    start = time.time()
     print('train_data shape:',  orig_train_data.shape)
     # ------------------------------------------------------------------------
     # preprocess data
-    print('Preprocessing train_data ...')
-    preprocess_pipe = get_preprocess_pipeline()
-    train_data = preprocess_pipe.fit_transform(orig_train_data)
-    print('processed train_data shape:',  train_data.shape)
-
-    N = int(train_data[cfg.USER_ID_INT_COL].max()+1)
-    M = int(train_data[cfg.ITEM_ID_INT_COL].max()+1)
-    print(f"Found # Users N = {N}; # Items M = {M} in training data")
-
+    X, y, preprocess_pipe = preprocess_data(orig_train_data)
+    data_based_params = get_data_based_model_params(X)
     # ------------------------------------------------------------------------
-    # split train data into train and validation data 
-    print('Doing train and validation split ...')
-    valid_split = cfg.VALIDATION_SPLIT
-    train_data = shuffle(train_data)
+    # get default hyper-parameters
+    hps = get_hyper_parameters_json()
+    hyper_params = get_default_hps(hps)
 
-    cutoff = int(valid_split*len(train_data))
-    valid_data = train_data.iloc[:cutoff]
-    train_data = train_data.iloc[cutoff:]
-   
+    model_params = { **data_based_params, **hyper_params }
     # ------------------------------------------------------------------------
-    # Create matrix factorization model     
-    print('Instantiating matrix factorizer ...')
-
-    mf = MatrixFactorizer( N=N, M=M, **hp_dict )
-    # mf.summary(); sys.exit()
-
-    # ------------------------------------------------------------------------
-    # Fit the model to training data 
-    print('Fitting matrix factorizer ...')
-
-    _ = mf.fit(
-        user_ids = train_data[cfg.USER_ID_INT_COL],
-        item_ids = train_data[cfg.ITEM_ID_INT_COL],
-        ratings = train_data[cfg.RATING_INT_COL],
-        validation_data=(
-            [ valid_data[cfg.USER_ID_INT_COL], valid_data[cfg.ITEM_ID_INT_COL] ],
-            valid_data[cfg.RATING_INT_COL]
-        ),
-        batch_size = 128, 
-        epochs = 30,
-        verbose = 1, 
-    )
+    mf, history = get_trained_model( X = X,  y = y, model_params = model_params)
 
     # ------------------------------------------------------------------------
     # Save the model and processing pipeline     
@@ -131,10 +121,13 @@ def train_model(train_data_path, model_path, logs_path, random_state=42):
 
 
 
+def get_prediction_for_batch(model, X):
+    return model.predict( X )
+
 
 def predict_with_model(test_data_path, model_path, output_path):
     # get test data
-    test_data = get_data(test_data_path)
+    test_data = get_data(test_data_path) 
     print("test data shape: ", test_data.shape)
 
     test_data_cols = list(test_data.columns)
@@ -146,9 +139,7 @@ def predict_with_model(test_data_path, model_path, output_path):
     proc_test_data = preprocess_pipe.transform(test_data)
     print("proc_test_data shape: ", proc_test_data.shape)
 
-    preds = mf.predict(
-        user_ids = proc_test_data[cfg.USER_ID_INT_COL],
-        item_ids = proc_test_data[cfg.ITEM_ID_INT_COL],)
+    preds = get_prediction_for_batch(mf, proc_test_data )
 
     print("preds shape: ", preds.shape)
 
@@ -161,6 +152,7 @@ def predict_with_model(test_data_path, model_path, output_path):
 
     proc_test_data.to_csv(os.path.join(output_path, cfg.PREDICTIONS_FNAME), index=False)
     return 0
+
 
 
 def load_model_and_preprocessor(model_path):
@@ -181,14 +173,14 @@ def score_predictions(output_path):
         print(err_msg)
         return err_msg
 
-
     df = pd.read_csv(pred_file)
 
     loss_types = ['mse', 'rmse', 'mae', 'nmae', 'smape', 'r2']
     scores_dict = scoring.get_loss_multiple(df[cfg.RATING_COL], df[cfg.PRED_RATING_COL], loss_types)
 
     with open(os.path.join(output_path, cfg.SCORING_FNAME), 'w') as f: 
-        f.write("Metric,Value\n")
+        f.write("Attribute,Value\n")
+        f.write(f"Model_Name,{cfg.MODEL_NAME}\n")
         for loss in loss_types:
             f.write( f"{loss},{round(scores_dict[loss], 4)}\n" )
 

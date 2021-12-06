@@ -1,4 +1,6 @@
 
+MODEL_NAME = 'matrix_factorization'
+
 
 USER_ID_COL = 'user_id'
 ITEM_ID_COL = 'item_id'
@@ -26,8 +28,15 @@ PREPROCESSOR_FNAME = 'preprocess_pipe.save'
 MODEL_WTS_FNAME = 'model_weights'
 MODEL_PARAMS_FNAME = 'model_params'
 
-# Predictions file name
-PREDICTIONS_FNAME = 'predictions.csv'
 
 # Scoring file name
 SCORING_FNAME = 'scores.csv'
+
+# Loss Metric
+loss_metric = 'mse'
+
+#------------------------------------------------
+# Output Files
+PREDICTIONS_FNAME = 'predictions.csv'
+HPO_RESULTS_FNAME = 'hpo_results.csv'
+

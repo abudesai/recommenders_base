@@ -7,9 +7,7 @@
         "type": "categorical",
         "range_low": "n/a",
         "range_high": "n/a",
-        "categorical_vals": [5, 10, 20, 50, 100],
-        "search_type": "loguniform"
-
+        "categorical_vals": [5, 10, 20, 50, 100]
     },
     {
         "name": "l2_reg",
@@ -18,7 +16,7 @@
         "type": "real",
         "range_low": 1e-9,
         "range_high": 1e-1,
-        "search_type": "loguniform"
+        "search_type": "log-uniform"
 
     },
     {
@@ -26,9 +24,9 @@
         "short_desc": "learning rate for optimizer",
         "default": 0.08, 
         "type": "real",
-        "range_low": 1e-5,
-        "range_high": 1e-1,
-        "search_type": "loguniform"
+        "range_low": 8e-5,
+        "range_high": 8e-1,
+        "search_type": "log-uniform"
 
     },
     {
@@ -36,9 +34,9 @@
         "short_desc": "momentum for sgd optimizer",
         "default": 0.9, 
         "type": "real",
-        "range_low": 1e-5,
-        "range_high": 1e-1,
-        "search_type": "loguniform"
+        "range_low": 0.9,
+        "range_high": 0.999,
+        "search_type": "uniform"
 
     }
 ]
