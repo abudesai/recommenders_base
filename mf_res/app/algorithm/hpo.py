@@ -11,8 +11,8 @@ import algorithm.model_config as cfg
 from sklearn.model_selection import KFold
 from skopt import gp_minimize
 from skopt.space import Real, Categorical, Integer
-from skopt.plots import plot_convergence
-from skopt.plots import plot_objective, plot_evaluations
+# from skopt.plots import plot_convergence
+# from skopt.plots import plot_objective, plot_evaluations
 from skopt.utils import use_named_args
 from skopt import Optimizer # for the optimization
 from joblib import Parallel, delayed # for the parallelization

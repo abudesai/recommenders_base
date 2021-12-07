@@ -3,6 +3,7 @@ import os, sys
 from train import train 
 from predict import predict
 from score import score
+from tune import tune 
 
 app = flask.Flask(__name__)
 
@@ -52,6 +53,18 @@ def score_endpoint():
     else:
         status = 404
     return flask.Response(response=resp, status=status, mimetype="application/json")
+
+
+@app.route("/tune", methods=["GET"])
+def tune_endpoint():
+    resp = tune()
+    if resp == 0: 
+        status = 200 
+        resp = "HPT completed successfully. Check HPT results in output dir."
+    else:
+        status = 404
+    return flask.Response(response=resp, status=status, mimetype="application/json")
+
 
 
 
