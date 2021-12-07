@@ -1,0 +1,38 @@
+[
+    {
+        "name": "K",
+        "short_desc": "dimensionality of embedding - default 10",
+        "default": 10, 
+        "type": "categorical",
+        "range_low": "n/a",
+        "range_high": "n/a",
+        "categorical_vals": [5, 10, 20, 50, 100]
+    },
+    {
+        "name": "hidden_dim",
+        "short_desc": "hidden dim size in the residual dense connection",
+        "default": 200, 
+        "type": "int",
+        "range_low": 50,
+        "range_high": 400,
+        "search_type": "log-uniform"
+    },
+    {
+        "name": "lr",
+        "short_desc": "learning rate for optimizer - default 0.08",
+        "default": 0.08, 
+        "type": "real",
+        "range_low": 8e-5,
+        "range_high": 8e-1,
+        "search_type": "log-uniform"
+    },
+    {
+        "name": "momentum",
+        "short_desc": "momentum for sgd optimizer - default 0.9",
+        "default": 0.9, 
+        "type": "real",
+        "range_low": 0.9,
+        "range_high": 0.999,
+        "search_type": "uniform"
+    }
+]
