@@ -1,0 +1,42 @@
+[
+    {
+        "name": "drop_out",
+        "short_desc": "drop_out rate for autorec",
+        "default": 0.7, 
+        "type": "real",
+        "range_low": 0.4,
+        "range_high": 0.9,
+        "search_type": "uniform",
+        "run_HPO": true
+    },
+    {
+        "name": "l2_reg",
+        "short_desc": "l2_regularization on dense layers in autorec",
+        "default": 1e-9, 
+        "type": "real",
+        "range_low": 1e-9, 
+        "range_high": 1e-5, 
+        "search_type": "log-uniform",
+        "run_HPO": false
+    },
+    {
+        "name": "lr",
+        "short_desc": "learning rate for optimizer - default 0.08",
+        "default": 0.08, 
+        "type": "real",
+        "range_low": 8e-5,
+        "range_high": 8e-1,
+        "search_type": "log-uniform",
+        "run_HPO": true
+    },
+    {
+        "name": "momentum",
+        "short_desc": "momentum for sgd optimizer - default 0.9",
+        "default": 0.9, 
+        "type": "real",
+        "range_low": 0.9,
+        "range_high": 0.999,
+        "search_type": "uniform",
+        "run_HPO": true
+    }
+]
