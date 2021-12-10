@@ -72,20 +72,7 @@ class AutoRec():
 
     def fit(self, train_data_tup, valid_data_tup, 
             batch_size=256, epochs=100, verbose=0): 
-
-        train_X_R, train_X_M, train_Y_R, train_Y_M = train_data_tup
-        valid_X_R, valid_X_M, valid_Y_R, valid_Y_M = valid_data_tup
-        # print(train_data.shape, train_mask.shape, valid_data.shape, valid_mask.shape)
-        # print(train_data.mean(), valid_data.mean())
-
-        self.mu = train_X_R.sum() / train_X_M.sum()
-        # print("mu: ", self.mu)
-
-        early_stop_loss = 'val_loss'
-        early_stop_callback = EarlyStopping(monitor=early_stop_loss, min_delta = 1e-4, patience=5) 
-        infcost_stop_callback = InfCostStopCallback()
-
-       
+               
         def generator(X_R, X_M, Y_R, Y_M):
             while True:
                 if X_R.shape[0] % batch_size == 0:
@@ -106,9 +93,24 @@ class AutoRec():
 
                     yield x_r, y_r  # returns X and Y
 
+        train_X_R, train_X_M, train_Y_R, train_Y_M = train_data_tup
+        if valid_data_tup is not None: 
+            valid_X_R, valid_X_M, valid_Y_R, valid_Y_M = valid_data_tup
+            validation_data = generator(valid_X_R, valid_X_M, valid_Y_R, valid_Y_M)
+        else:
+            validation_data = None
+
+        self.mu = train_X_R.sum() / train_X_M.sum()
+        # print("mu: ", self.mu)
+
+        early_stop_loss = 'val_loss' if validation_data != None else 'loss'
+        early_stop_callback = EarlyStopping(monitor=early_stop_loss, min_delta = 1e-4, patience=5) 
+        infcost_stop_callback = InfCostStopCallback()
+
+
         history = self.model.fit(
                 x=generator(train_X_R, train_X_M, train_Y_R, train_Y_M),
-                validation_data=generator(valid_X_R, valid_X_M, valid_Y_R, valid_Y_M),
+                validation_data=validation_data,
                 batch_size = batch_size,
                 epochs=epochs,
                 steps_per_epoch=train_X_R.shape[0] // batch_size + 1,
@@ -147,7 +149,7 @@ class AutoRec():
         model_params = joblib.load(os.path.join(model_path, cfg.MODEL_PARAMS_FNAME))
         mf = AutoRec(**model_params)
         mf.mu = model_params['mu']
-        mf.model.load_weights(os.path.join(model_path, cfg.MODEL_WTS_FNAME))
+        mf.model.load_weights(os.path.join(model_path, cfg.MODEL_WTS_FNAME)).expect_partial()
         return mf
 
 
