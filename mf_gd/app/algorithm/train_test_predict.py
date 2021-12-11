@@ -83,7 +83,7 @@ def get_trained_model(training_data, hyper_params):
         X = X,  y = y,
         validation_split=cfg.VALIDATION_SPLIT,
         batch_size = 128, 
-        epochs = 20,
+        epochs = 1,
         verbose = 1, 
     )     
     print('Finished training autorec ...')   
@@ -106,7 +106,7 @@ def run_training(train_data_path, model_path, logs_path, random_state=42):
     hps = get_hyper_parameters_json()
     hyper_params = get_default_hps(hps)
     
-    print('Training matrix factorizer ...')  
+    print(f'Training {cfg.MODEL_NAME} ...')  
     model, train_hist, preprocess_pipe = get_trained_model(orig_train_data, hyper_params)
 
     # Save the model and processing pipeline     
@@ -149,6 +149,7 @@ def run_predictions(data_fpath, model_path, output_path):
     print("test data shape: ", test_data.shape)
 
     # load the model, and preprocessor 
+    print(f"Loading trained {cfg.MODEL_NAME}... ")
     model, preprocess_pipe = load_model_and_preprocessor(model_path)
 
     # get predictions from model
@@ -170,12 +171,20 @@ def save_model_and_preprocessor(model, preprocess_pipe, model_path):
 
 def load_model_and_preprocessor(model_path):
     if not os.path.exists(os.path.join(model_path, cfg.PREPROCESSOR_FNAME)):
-        err_msg = f"No trained model found. Expected to find model files in path: {model_path}"
+        err_msg = f"No trained preprocessor found. Expected to find model files in path: {model_path}"
         print(err_msg)
         return err_msg
 
-    preprocess_pipe = joblib.load(os.path.join(model_path, cfg.PREPROCESSOR_FNAME))
-    mf = MatrixFactorizer.load(model_path)
+    try: 
+        preprocess_pipe = joblib.load(os.path.join(model_path, cfg.PREPROCESSOR_FNAME))
+    except: 
+        raise Exception("Error loading the preprocessor. Do you have the right trained preprocessor?")
+    
+    try: 
+        mf = MatrixFactorizer.load(model_path)        
+    except: 
+        raise Exception(f"Error loading the trained {cfg.MODEL_NAME} model. Do you have the right trained preprocessor?")
+    
     return mf, preprocess_pipe
 
 
@@ -236,7 +245,7 @@ if __name__ == '__main__':
     model_path = './delete/'
     logs_path = './delete/'
 
-    train_model(train_data_path, model_path, logs_path) 
+    run_training(train_data_path, model_path, logs_path) 
     
 
 

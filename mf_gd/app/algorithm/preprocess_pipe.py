@@ -36,7 +36,6 @@ def get_preprocess_pipeline():
 
 
 
-
 if __name__ == '__main__':
 
     data_path = './../../data/jester/processed/train/ratings_train.csv'

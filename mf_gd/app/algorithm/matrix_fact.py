@@ -118,7 +118,8 @@ if __name__ == '__main__':
     data_type = 'train'
     train_data = pd.read_csv(f'./../../')
     print(train_data.shape)
-
+    
+    dataset='jester'
     data_type = 'test'
     test_data = pd.read_csv(f'./../../data/{dataset}/processed/{data_type}/ratings_{data_type}.csv')
     print(test_data.shape)

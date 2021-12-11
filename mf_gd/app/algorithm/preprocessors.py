@@ -2,8 +2,6 @@ import numpy as np, pandas as pd
 import sys 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.base import BaseEstimator, TransformerMixin
-from scipy.sparse import lil_matrix
-import algorithm.model_config as cfg  
 
 
 class UserItemIdMapper(BaseEstimator, TransformerMixin):    
@@ -81,7 +79,7 @@ class RatingsScaler(BaseEstimator, TransformerMixin):
         
 
     def transform(self, data):    
-        if not self.ratings_col in data.columns: return data                        
+        if not self.ratings_col in data.columns: return data                       
         
         data[self.ratings_int_col] = self.scaler.transform(data[[self.ratings_col]])            
         return data

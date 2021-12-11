@@ -97,7 +97,7 @@ def get_trained_model(training_data, hyper_params):
         train_data_tup = train_data_tup,
         valid_data_tup = valid_data_tup,
         batch_size = 128, 
-        epochs = 15,
+        epochs = 30,
         verbose = 1, 
     )        
     print('Finished training autorec ...')
@@ -139,7 +139,8 @@ def run_training(train_ratings_fpath, model_path, logs_path, random_state=42):
     hps = get_hyper_parameters_json()
     hyper_params = get_default_hps(hps)
 
-    # running training job and get model
+    # Run training job and get model    
+    print(f'Training {cfg.MODEL_NAME} ...')  
     model, train_hist, preprocess_pipe = get_trained_model(orig_train_data, hyper_params)
 
     # Save the model and processing pipeline     
@@ -193,7 +194,7 @@ def run_predictions(data_fpath, model_path, output_path):
     # print("test data shape: ", test_data.shape)
 
     # load the model, and preprocessor 
-    print("Loading trained model... ")
+    print(f"Loading trained {cfg.MODEL_NAME}... ")
     model, preprocess_pipe = load_model_and_preprocessor(model_path)
 
     # get predictions from model
@@ -219,8 +220,16 @@ def load_model_and_preprocessor(model_path):
         print(err_msg)
         return err_msg
 
-    preprocess_pipe = joblib.load(os.path.join(model_path, cfg.PREPROCESSOR_FNAME))
-    model = AutoRec.load(model_path)
+    try: 
+        preprocess_pipe = joblib.load(os.path.join(model_path, cfg.PREPROCESSOR_FNAME))
+    except: 
+        raise Exception("Error loading the preprocessor. Do you have the right trained preprocessor?")
+    
+    try: 
+        model = AutoRec.load(model_path)    
+    except: 
+        raise Exception(f"Error loading the trained {cfg.MODEL_NAME} model. Do you have the right trained preprocessor?")    
+
     return model, preprocess_pipe
 
 

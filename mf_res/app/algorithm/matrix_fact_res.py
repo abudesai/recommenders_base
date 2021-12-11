@@ -150,5 +150,5 @@ if __name__ == '__main__':
     user_ids = np.arange(N)
     item_ids = np.arange(M)
 
-    mf = MatrixFactorizerRes(N, M, K=10)
+    mf = MatrixFactorizerRes(N, M, K=10, hidden_dim = 100)
     preds = mf.predict()
