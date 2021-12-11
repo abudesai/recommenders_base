@@ -1,5 +1,5 @@
 
-MODEL_NAME = 'matrix_fact_with_res_conn'
+MODEL_NAME = 'AutoRec'
 
 
 USER_ID_COL = 'user_id'

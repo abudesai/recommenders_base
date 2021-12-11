@@ -5,8 +5,9 @@ import sys, os, time
 import json
 import joblib
 from sklearn.utils import shuffle
+from sklearn.model_selection import KFold
 from algorithm.autorec import AutoRec 
-from algorithm.preprocess_pipe import get_preprocess_pipeline, get_autorec_pipeline
+from algorithm.preprocess_pipe import get_preprocess_pipeline 
 import algorithm.model_config as cfg
 import algorithm.scoring as scoring
 import tensorflow as tf
@@ -37,8 +38,7 @@ def get_default_hps(hps):
 
 def get_data(data_path): 
     try:
-        data = pd.read_csv(data_path)
-        return data
+        return pd.read_csv(data_path)
     except: 
         raise Exception(f"Error reading data at: {data_path}")
 
@@ -47,22 +47,6 @@ def get_data_based_model_params(R):
     M = R.shape[1]
     return {"M": M}
 
-
-
-def get_trained_model(train_data_tup, valid_data_tup, model_params): 
-    print('Training matrix factorizer ...')        
-    # Create and train matrix factorization model 
-    autorec = AutoRec( **model_params )
-    history = autorec.fit(
-        train_data_tup = train_data_tup,
-        valid_data_tup = valid_data_tup,
-        batch_size = 128, 
-        epochs = 15,
-        verbose = 1, 
-    )        
-    print('Finished training autorec ...')
-    return autorec, history
-    
 
 
 def preprocess_data(data):
@@ -80,21 +64,39 @@ def get_train_valid_split(data, valid_split):
     return train_data, valid_data
 
 
-def train_model(train_data_path, model_path, logs_path, random_state=42): 
+def get_cv_fold_data(data, n_folds):
+    # CV folds 
+    data_folds = []
+    kf = KFold(n_folds)
+    curr_fold_num = 0
+    for train_index, valid_index in kf.split(data):
+        train_data, valid_data = data.iloc[train_index],data.iloc[valid_index]
+        data_folds.append(( train_data, valid_data ))
+        curr_fold_num += 1
+        if curr_fold_num == n_folds: break
+    return data_folds
 
-    print("Starting the training process...")
-    start = time.time()
 
-    # set seeds if specified
-    set_seeds(seed_value = random_state)        
+# def get_trained_model(train_data_tup, valid_data_tup, model_params): 
+#     print('Training matrix factorizer ...')        
+#     # Create and train matrix factorization model 
+#     autorec = AutoRec( **model_params )
+#     history = autorec.fit(
+#         train_data_tup = train_data_tup,
+#         valid_data_tup = valid_data_tup,
+#         batch_size = 128, 
+#         epochs = 15,
+#         verbose = 1, 
+#     )        
+#     print('Finished training autorec ...')
+#     return autorec, history
 
-    # get training data
-    orig_train_data = get_data(train_data_path)    
-    print('orig_train_data shape:',  orig_train_data.shape)    
-    
-    # ------------------------------------------------------------------------
+
+def get_trained_model(training_data, hyper_params): 
+
+     # ------------------------------------------------------------------------
     # split train data into train and validation data     
-    train_data, valid_data = get_train_valid_split(orig_train_data, cfg.VALIDATION_SPLIT)
+    train_data, valid_data = get_train_valid_split(training_data, cfg.VALIDATION_SPLIT)
     print('After train/valid split, train_data shape:',  train_data.shape, 'valid_data shape:',  valid_data.shape)
         
     # ------------------------------------------------------------------------
@@ -104,42 +106,37 @@ def train_model(train_data_path, model_path, logs_path, random_state=42):
     # get ratings and mask matrices
     train_X_R, train_X_M, train_Y_R, train_Y_M, train_user_ids_int = preprocess_pipe.fit_transform(train_data)
     valid_X_R, valid_X_M, valid_Y_R, valid_Y_M, valid_user_ids_int = preprocess_pipe.transform(valid_data)
-    # print('processed train data and mask shape:',  train_X_R.shape, train_X_M.shape, train_Y_R.shape, train_Y_M.shape)
-    # print('processed valid data and mask shape:',  valid_X_R.shape, valid_X_M.shape, valid_Y_R.shape, valid_Y_M.shape)    
+    
+    train_data_tup = train_X_R, train_X_M, train_Y_R, train_Y_M
+    valid_data_tup = valid_X_R, valid_X_M, valid_Y_R, valid_Y_M
 
     # ------------------------------------------------------------------------
     # get M - number of items. It will be used to define the autorec dimension
     data_based_params = get_data_based_model_params(train_X_R)
     print('data based params:',  data_based_params)
-    # ------------------------------------------------------------------------
-    # get default hyper-parameters
-    hps = get_hyper_parameters_json()
-    hyper_params = get_default_hps(hps)
-
+    
     model_params = { **data_based_params, **hyper_params }
     print('model_params:',  model_params)
     # ------------------------------------------------------------------------
+    print('Training matrix factorizer ...')        
+    # Create and train matrix factorization model 
+    autorec = AutoRec( **model_params )
+    history = autorec.fit(
+        train_data_tup = train_data_tup,
+        valid_data_tup = valid_data_tup,
+        batch_size = 128, 
+        epochs = 15,
+        verbose = 1, 
+    )        
+    print('Finished training autorec ...')
 
-    train_data_tup = train_X_R, train_X_M, train_Y_R, train_Y_M
-    valid_data_tup = valid_X_R, valid_X_M, valid_Y_R, valid_Y_M
-
-    model, history = get_trained_model( train_data_tup, valid_data_tup, model_params = model_params)    
-    
-    # ------------------------------------------------------------------------
-    # Save the model and processing pipeline     
-    print('Saving model ...')
-    joblib.dump(preprocess_pipe, os.path.join(model_path, cfg.PREPROCESSOR_FNAME))
-    model.save(model_path)    
-    
     # ------------------------------------------------------------------------
     # load saved model and test on validation data
     # print("Loading trained model...")
     
-    # model2, pipe2 = load_model_and_preprocessor(model_path)
-
     # # # test valid predictions
-    # preds = model2.predict(valid_X_R, valid_X_M)    
-    # preds_df = get_inverse_transformation(preds, valid_Y_M, valid_user_ids_int, pipe2)
+    # preds = model.predict(valid_X_R, valid_X_M)    
+    # preds_df = get_inverse_transformation(preds, valid_Y_M, valid_user_ids_int, preprocess_pipe)
 
     # preds_df = valid_data.merge(preds_df[['user_id', 'item_id', 'pred_rating']], on=['user_id', 'item_id'])
     # preds_df.sort_values(by=['user_id', 'item_id'], inplace=True)
@@ -153,6 +150,34 @@ def train_model(train_data_path, model_path, logs_path, random_state=42):
     
     # # print('\ncorr act pred int', preds_df[['rating_int', 'pred_rating_int']].corr())
     # print('\ncorr act pred', preds_df[['rating', 'pred_rating']].corr())
+    # ------------------------------------------------------------------------
+    return autorec, history, preprocess_pipe
+
+
+def train_model(train_ratings_fpath, model_path, logs_path, random_state=42): 
+
+    print("Starting the training process...")
+    start = time.time()
+
+    # set seeds if specified
+    set_seeds(seed_value = random_state)        
+
+    # get training data
+    orig_train_data = get_data(train_ratings_fpath)    
+    print('orig_train_data shape:',  orig_train_data.shape)    
+    
+   
+    # get default hyper-parameters
+    hps = get_hyper_parameters_json()
+    hyper_params = get_default_hps(hps)
+
+    # running training job and get model
+    model, train_hist, preprocess_pipe = get_trained_model(orig_train_data, hyper_params)
+
+
+    # Save the model and processing pipeline     
+    print('Saving model ...')
+    save_model_and_preprocessor(model, preprocess_pipe, model_path)    
     
     # ------------------------------------------------------------------------
     end = time.time()
@@ -177,20 +202,10 @@ def get_prediction_for_batch(model, R, M):
     return model.predict( R, M )
 
 
-
-def predict_with_model(test_data_path, model_path, output_path):
-    # get test data
-    print("Reading prediction data... ")
-    test_data = get_data(test_data_path) 
-    # print("test data shape: ", test_data.shape)
-
-    # load the model, and preprocessor 
-    print("Loading trained model... ")
-    model, preprocess_pipe = load_model_and_preprocessor(model_path)
-
+def predict_with_model(predict_data, model, preprocess_pipe): 
     # transform data
     print("Preprocessing prediction data... ")
-    test_X_R, test_X_M, test_Y_R, test_Y_M, test_users_int_id = preprocess_pipe.transform(test_data)
+    test_X_R, test_X_M, test_Y_R, test_Y_M, test_users_int_id = preprocess_pipe.transform(predict_data)
     # print('processed train data and mask shape:',  test_X_R.shape, test_X_M.shape, test_Y_R.shape, test_Y_M.shape)
 
     # make predictions
@@ -202,15 +217,41 @@ def predict_with_model(test_data_path, model_path, output_path):
     print("Post-processing predictions for writing... ")
     preds_df = get_inverse_transformation(preds, test_Y_M, test_users_int_id, preprocess_pipe)
 
-    preds_df = test_data.merge(
+    preds_df = predict_data.merge(
         preds_df[[cfg.USER_ID_COL, cfg.ITEM_ID_COL, cfg.PRED_RATING_COL]], 
         on=[cfg.USER_ID_COL, cfg.ITEM_ID_COL])    
+    
+    return preds_df
+
+
+def get_prediction_score(preds_df): 
+    loss = scoring.get_loss(preds_df[cfg.RATING_COL], preds_df[cfg.PRED_RATING_COL], cfg.loss_metric)
+    return loss
+
+
+def run_predictions(data_fpath, model_path, output_path):
+    # get test data
+    print("Reading prediction data... ")
+    test_data = get_data(data_fpath) 
+    # print("test data shape: ", test_data.shape)
+
+    # load the model, and preprocessor 
+    print("Loading trained model... ")
+    model, preprocess_pipe = load_model_and_preprocessor(model_path)
+
+    preds_df = predict_with_model(test_data, model, preprocess_pipe)
         
     print("Saving predictions... ")
     preds_df.to_csv(os.path.join(output_path, cfg.PREDICTIONS_FNAME), index=False)
     
     print("Done with predictions.")
     return 0
+
+
+def save_model_and_preprocessor(model, preprocess_pipe, model_path):
+    joblib.dump(preprocess_pipe, os.path.join(model_path, cfg.PREPROCESSOR_FNAME))
+    model.save(model_path) 
+    return    
 
 
 def load_model_and_preprocessor(model_path):

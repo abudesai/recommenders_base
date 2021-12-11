@@ -13,13 +13,10 @@ from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import SGD, Adam
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, Callback
 
-
-
 import algorithm.model_config as cfg
 
 
 COST_THRESHOLD = float('inf')
-
 
 
 class InfCostStopCallback(Callback):

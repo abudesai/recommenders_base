@@ -109,7 +109,7 @@ class MatrixFactorizer():
     def load(model_path): 
         model_params = joblib.load(os.path.join(model_path, cfg.MODEL_PARAMS_FNAME))
         mf = MatrixFactorizer(**model_params)
-        mf.model.load_weights(os.path.join(model_path, cfg.MODEL_WTS_FNAME))
+        mf.model.load_weights(os.path.join(model_path, cfg.MODEL_WTS_FNAME)).expect_partial()
         return mf
 
 

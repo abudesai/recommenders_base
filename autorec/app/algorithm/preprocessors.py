@@ -3,7 +3,7 @@ import sys
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.base import BaseEstimator, TransformerMixin
 from scipy.sparse import lil_matrix
-import algorithm.model_config as cfg
+import algorithm.model_config as cfg 
 
 
 class UserItemIdMapper(BaseEstimator, TransformerMixin):    
@@ -22,7 +22,7 @@ class UserItemIdMapper(BaseEstimator, TransformerMixin):
 
         self.user_ids = data[[self.user_id_col]].drop_duplicates()
 
-        # self.user_ids = self.user_ids.sample(n=50, replace=False, random_state=42)        
+        # self.user_ids = self.user_ids.sample(n=1000, replace=False, random_state=42)        
         
         self.user_ids[self.user_id_int_col] = self.user_ids[self.user_id_col].factorize()[0]
         self.users_orig_to_new = dict( zip(self.user_ids[self.user_id_col], 
