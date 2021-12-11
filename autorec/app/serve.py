@@ -1,5 +1,4 @@
 import flask
-import os, sys 
 import algorithm.model_config as cfg
 from train import train 
 from predict import predict

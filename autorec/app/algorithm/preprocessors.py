@@ -88,9 +88,8 @@ class RatingsScaler(BaseEstimator, TransformerMixin):
 
 
     def inverse_transform(self, data): 
-        rescaled_data = data
-        rescaled_data[cfg.PRED_RATING_COL] = self.scaler.inverse_transform(data[[cfg.PRED_RATING_INT_COL]])
-        return rescaled_data
+        data[cfg.PRED_RATING_COL] = self.scaler.inverse_transform(data[[cfg.PRED_RATING_INT_COL]])
+        return data
 
 
 

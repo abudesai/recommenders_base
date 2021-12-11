@@ -35,26 +35,6 @@ def get_preprocess_pipeline():
     return pipeline
 
 
-def get_autorec_pipeline():
-    # pipeline1 = get_preprocess_pipeline()
-
-    autorec_pipeline = Pipeline(
-        [
-            (
-                cfg.SPARSE_MATRIX_CREATOR,
-                (
-                    pp.SparseMatrixCreator(
-                        user_id_int_col= cfg.USER_ID_INT_COL, 
-                        item_id_int_col = cfg.ITEM_ID_INT_COL, 
-                        ratings_int_col = cfg.RATING_INT_COL, 
-                    )
-                )
-            )
-        ]
-    )
-
-    # autorec_pipeline = Pipeline(pipeline1.steps + pipeline2.steps)
-    return autorec_pipeline
 
 
 if __name__ == '__main__':

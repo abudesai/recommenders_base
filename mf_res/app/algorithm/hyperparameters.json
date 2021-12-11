@@ -6,7 +6,8 @@
         "type": "categorical",
         "range_low": "n/a",
         "range_high": "n/a",
-        "categorical_vals": [5, 10, 20, 50, 100]
+        "categorical_vals": [5, 10, 20, 50, 100],
+        "run_HPO": true
     },
     {
         "name": "hidden_dim",
@@ -15,7 +16,8 @@
         "type": "int",
         "range_low": 50,
         "range_high": 400,
-        "search_type": "log-uniform"
+        "search_type": "uniform",
+        "run_HPO": true
     },
     {
         "name": "lr",
@@ -24,7 +26,8 @@
         "type": "real",
         "range_low": 8e-5,
         "range_high": 8e-1,
-        "search_type": "log-uniform"
+        "search_type": "log-uniform",
+        "run_HPO": true
     },
     {
         "name": "momentum",
@@ -33,6 +36,7 @@
         "type": "real",
         "range_low": 0.9,
         "range_high": 0.999,
-        "search_type": "uniform"
+        "search_type": "uniform",
+        "run_HPO": false
     }
 ]

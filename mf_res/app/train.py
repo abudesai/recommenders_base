@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import paths
-from algorithm.train_test_predict import train_model
+from algorithm.train_test_predict import run_training
 
 
 def train():
-    resp = train_model(paths.train_data_path, paths.model_path, paths.logs_path)
+    resp = run_training(paths.train_ratings_fpath, paths.model_path, paths.logs_path)
     return resp
 
 

@@ -1,5 +1,5 @@
 import flask
-import os, sys 
+import algorithm.model_config as cfg
 from train import train 
 from predict import predict
 from score import score
@@ -11,7 +11,7 @@ app = flask.Flask(__name__)
 
 @app.route("/", methods=["GET"])
 def hello():
-    return 'Hello - I am Matrix Factorizer and I am alive!'
+    return f'Hello - I am {cfg.MODEL_NAME} and I am alive!'
      
 
 @app.route("/ping", methods=["GET"])
@@ -34,7 +34,7 @@ def train_endpoint():
 
 
 @app.route("/predict", methods=["GET"])
-def predict_endpoint():
+def predict_endpoint(): 
     resp = predict()
     if resp == 0: 
         status = 200 

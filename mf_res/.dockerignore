@@ -2,3 +2,5 @@
 venv
 .venv
 .git 
+local_test/
+local_test.py

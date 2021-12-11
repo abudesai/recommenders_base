@@ -5,10 +5,8 @@ import sys, os
 from random import shuffle
 from algorithm.preprocess_pipe import get_preprocess_pipeline
 import algorithm.train_test_predict as model_funcs
-import algorithm.scoring as scoring 
 import algorithm.model_config as cfg
 
-from sklearn.model_selection import KFold
 from skopt import gp_minimize
 from skopt.space import Real, Categorical, Integer
 # from skopt.plots import plot_convergence
@@ -20,15 +18,17 @@ from joblib import Parallel, delayed # for the parallelization
 # HPO
 num_CV_folds = 3
 num_initial_points = 5
-num_searches = 45
+num_searches = 20
 max_threads = 10
 
 
 def get_hp_opt_space(hps): 
     param_grid = []
     for hp_obj in hps: 
-
-        if hp_obj["type"] == 'categorical':
+        if hp_obj["run_HPO"] == False:
+            param_grid.append( Categorical([hp_obj['default']], name=hp_obj['name']) )
+        
+        elif hp_obj["type"] == 'categorical':
             param_grid.append( Categorical(hp_obj['categorical_vals'], name=hp_obj['name']) )
 
         elif hp_obj["type"] == 'int' and hp_obj["search_type"] == 'uniform':
@@ -97,6 +97,12 @@ def run_hpo(train_ratings_fpath, output_path):
         losses = []
         for train_data_obj, valid_data_obj in data_folds: 
             model, history, preprocess_pipe = model_funcs.get_trained_model(train_data_obj, hyper_params)
+
+            # for some hyper-param settings, we end up with NaN loss
+            last_loss = history.history['loss'][-1]
+            if np.isnan(last_loss):
+                losses.append(1.0e9)
+                break
             
             # pred and score on validation data
             valid_preds_df = model_funcs.predict_with_model(valid_data_obj, model, preprocess_pipe)

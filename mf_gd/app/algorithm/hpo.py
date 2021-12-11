@@ -5,10 +5,8 @@ import sys, os
 from random import shuffle
 from algorithm.preprocess_pipe import get_preprocess_pipeline
 import algorithm.train_test_predict as model_funcs
-import algorithm.scoring as scoring 
 import algorithm.model_config as cfg
 
-from sklearn.model_selection import KFold
 from skopt import gp_minimize
 from skopt.space import Real, Categorical, Integer
 # from skopt.plots import plot_convergence
@@ -20,15 +18,17 @@ from joblib import Parallel, delayed # for the parallelization
 # HPO
 num_CV_folds = 3
 num_initial_points = 5
-num_searches = 45
+num_searches = 30
 max_threads = 10
 
 
 def get_hp_opt_space(hps): 
     param_grid = []
     for hp_obj in hps: 
-
-        if hp_obj["type"] == 'categorical':
+        if hp_obj["run_HPO"] == False:
+            param_grid.append( Categorical([hp_obj['default']], name=hp_obj['name']) )
+        
+        elif hp_obj["type"] == 'categorical':
             param_grid.append( Categorical(hp_obj['categorical_vals'], name=hp_obj['name']) )
 
         elif hp_obj["type"] == 'int' and hp_obj["search_type"] == 'uniform':
@@ -58,22 +58,7 @@ def get_num_cpus_to_use():
     return num_cpus_to_use 
 
 
-
-def get_cv_fold_data(X, y, n_folds):
-    # CV folds 
-    data_folds = []
-    kf = KFold(n_folds)
-    for train_index, valid_index in kf.split(X):
-        X_train, X_valid = X.iloc[train_index], X.iloc[valid_index]
-        if y is not None: 
-            y_train, y_valid = y.iloc[train_index], y.iloc[valid_index]
-        else: y_train, y_valid = None, None
-        data_folds.append((X_train, X_valid, y_train, y_valid))
-    return data_folds
-
-
-
-def run_hpo(train_data_path, output_path): 
+def run_hpo(train_ratings_fpath, output_path): 
 
     start = time.time()
 
@@ -81,20 +66,12 @@ def run_hpo(train_data_path, output_path):
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     # get training data
-    orig_train_data = model_funcs.get_data(train_data_path)
+    orig_train_data = model_funcs.get_data(train_ratings_fpath)
 
-    # ------------------------------------------------------------------------
-    # preprocess data
-    X, y, preprocess_pipe = model_funcs.preprocess_data(orig_train_data)
-
-    # this is an unusual situation with recommenders.
-    # We have to get num_users and num_items from the full dataset, not from CV-folds, 
-    # otherwise we get an embedding lookup error
-    data_based_params = model_funcs.get_data_based_model_params(X)
     # ------------------------------------------------------------------------
     # Get CV folds 
-    data_folds = get_cv_fold_data(X = X, y=y, n_folds = num_CV_folds)
-
+    data_folds = model_funcs.get_cv_fold_data(data = orig_train_data, n_folds = num_CV_folds)
+    
     # ------------------------------------------------------------------------
     # get default hyper-parameters
     hps = model_funcs.get_hyper_parameters_json()
@@ -115,21 +92,22 @@ def run_hpo(train_data_path, output_path):
     num_loops = int(np.ceil(num_searches / num_cpus_to_use))
     # ------------------------------------------------------------------------
     # define objective
-    def objective(sampled_hps_list):         
+    def objective(sampled_hps_list):      
         hyper_params = collect_sampled_hps(sampled_hps_list, hps)
         losses = []
-        for X_train, X_valid, y_train, y_valid in data_folds: 
-            model_params = { **data_based_params, **hyper_params }
-            model, history = model_funcs.get_trained_model(X_train, y_train, model_params)
+        for train_data_obj, valid_data_obj in data_folds: 
+            model, history, preprocess_pipe = model_funcs.get_trained_model(train_data_obj, hyper_params)
 
+            # for some hyper-param settings, we end up with NaN loss
             last_loss = history.history['loss'][-1]
             if np.isnan(last_loss):
                 losses.append(1.0e9)
                 break
             
             # pred and score on validation data
-            y_valid_pred = model_funcs.get_prediction_for_batch(model, X_valid)
-            loss = scoring.get_loss(y_valid, y_valid_pred)            
+            valid_preds_df = model_funcs.predict_with_model(valid_data_obj, model, preprocess_pipe)
+            
+            loss = model_funcs.get_prediction_score(valid_preds_df)            
             losses.append(loss)
 
         mean_loss = np.mean(losses)

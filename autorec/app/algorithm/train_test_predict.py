@@ -48,15 +48,6 @@ def get_data_based_model_params(R):
     return {"M": M}
 
 
-
-def preprocess_data(data):
-    print('Preprocessing train_data ...')
-    preprocess_pipe = get_preprocess_pipeline()
-    # get ratings and mask matrices
-    X, Y, M = preprocess_pipe.fit_transform(data)
-    return X, Y, M, preprocess_pipe
-
-
 def get_train_valid_split(data, valid_split): 
     msk = np.random.rand(len(data)) < valid_split
     valid_data = data[msk].copy()
@@ -65,39 +56,20 @@ def get_train_valid_split(data, valid_split):
 
 
 def get_cv_fold_data(data, n_folds):
-    # CV folds 
     data_folds = []
     kf = KFold(n_folds)
-    curr_fold_num = 0
     for train_index, valid_index in kf.split(data):
         train_data, valid_data = data.iloc[train_index],data.iloc[valid_index]
         data_folds.append(( train_data, valid_data ))
-        curr_fold_num += 1
-        if curr_fold_num == n_folds: break
     return data_folds
-
-
-# def get_trained_model(train_data_tup, valid_data_tup, model_params): 
-#     print('Training matrix factorizer ...')        
-#     # Create and train matrix factorization model 
-#     autorec = AutoRec( **model_params )
-#     history = autorec.fit(
-#         train_data_tup = train_data_tup,
-#         valid_data_tup = valid_data_tup,
-#         batch_size = 128, 
-#         epochs = 15,
-#         verbose = 1, 
-#     )        
-#     print('Finished training autorec ...')
-#     return autorec, history
 
 
 def get_trained_model(training_data, hyper_params): 
 
-     # ------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
     # split train data into train and validation data     
     train_data, valid_data = get_train_valid_split(training_data, cfg.VALIDATION_SPLIT)
-    print('After train/valid split, train_data shape:',  train_data.shape, 'valid_data shape:',  valid_data.shape)
+    # print('After train/valid split, train_data shape:',  train_data.shape, 'valid_data shape:',  valid_data.shape)
         
     # ------------------------------------------------------------------------
     # preprocess data
@@ -118,7 +90,7 @@ def get_trained_model(training_data, hyper_params):
     model_params = { **data_based_params, **hyper_params }
     print('model_params:',  model_params)
     # ------------------------------------------------------------------------
-    print('Training matrix factorizer ...')        
+    print('Training AutoRec ...')        
     # Create and train matrix factorization model 
     autorec = AutoRec( **model_params )
     history = autorec.fit(
@@ -131,10 +103,7 @@ def get_trained_model(training_data, hyper_params):
     print('Finished training autorec ...')
 
     # ------------------------------------------------------------------------
-    # load saved model and test on validation data
-    # print("Loading trained model...")
-    
-    # # # test valid predictions
+    # test valid predictions
     # preds = model.predict(valid_X_R, valid_X_M)    
     # preds_df = get_inverse_transformation(preds, valid_Y_M, valid_user_ids_int, preprocess_pipe)
 
@@ -154,7 +123,7 @@ def get_trained_model(training_data, hyper_params):
     return autorec, history, preprocess_pipe
 
 
-def train_model(train_ratings_fpath, model_path, logs_path, random_state=42): 
+def run_training(train_ratings_fpath, model_path, logs_path, random_state=42): 
 
     print("Starting the training process...")
     start = time.time()
@@ -164,8 +133,7 @@ def train_model(train_ratings_fpath, model_path, logs_path, random_state=42):
 
     # get training data
     orig_train_data = get_data(train_ratings_fpath)    
-    print('orig_train_data shape:',  orig_train_data.shape)    
-    
+    print('orig_train_data shape:',  orig_train_data.shape)        
    
     # get default hyper-parameters
     hps = get_hyper_parameters_json()
@@ -174,12 +142,10 @@ def train_model(train_ratings_fpath, model_path, logs_path, random_state=42):
     # running training job and get model
     model, train_hist, preprocess_pipe = get_trained_model(orig_train_data, hyper_params)
 
-
     # Save the model and processing pipeline     
     print('Saving model ...')
     save_model_and_preprocessor(model, preprocess_pipe, model_path)    
     
-    # ------------------------------------------------------------------------
     end = time.time()
     print(f"Total training time: {np.round((end - start)/60.0, 2)} minutes") 
     
@@ -198,10 +164,6 @@ def get_inverse_transformation(preds, mask, users, pipe):
     return preds_df
 
 
-def get_prediction_for_batch(model, R, M):
-    return model.predict( R, M )
-
-
 def predict_with_model(predict_data, model, preprocess_pipe): 
     # transform data
     print("Preprocessing prediction data... ")
@@ -210,7 +172,7 @@ def predict_with_model(predict_data, model, preprocess_pipe):
 
     # make predictions
     print("Making predictions... ")
-    preds = get_prediction_for_batch(model, test_X_R, test_X_M )
+    preds = model.predict(test_X_R, test_X_M )
     # print("preds shape: ", preds.shape)
 
     # make inverse transformations on predictions
@@ -224,11 +186,6 @@ def predict_with_model(predict_data, model, preprocess_pipe):
     return preds_df
 
 
-def get_prediction_score(preds_df): 
-    loss = scoring.get_loss(preds_df[cfg.RATING_COL], preds_df[cfg.PRED_RATING_COL], cfg.loss_metric)
-    return loss
-
-
 def run_predictions(data_fpath, model_path, output_path):
     # get test data
     print("Reading prediction data... ")
@@ -239,6 +196,8 @@ def run_predictions(data_fpath, model_path, output_path):
     print("Loading trained model... ")
     model, preprocess_pipe = load_model_and_preprocessor(model_path)
 
+    # get predictions from model
+    print("Making predictions... ")
     preds_df = predict_with_model(test_data, model, preprocess_pipe)
         
     print("Saving predictions... ")
@@ -263,6 +222,11 @@ def load_model_and_preprocessor(model_path):
     preprocess_pipe = joblib.load(os.path.join(model_path, cfg.PREPROCESSOR_FNAME))
     model = AutoRec.load(model_path)
     return model, preprocess_pipe
+
+
+def get_prediction_score(preds_df): 
+    loss = scoring.get_loss(preds_df[cfg.RATING_COL], preds_df[cfg.PRED_RATING_COL], cfg.loss_metric)
+    return loss
 
 
 def score_predictions(output_path): 
