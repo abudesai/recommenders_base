@@ -83,7 +83,7 @@ def get_trained_model(training_data, hyper_params):
         X = X,  y = y,
         validation_split=cfg.VALIDATION_SPLIT,
         batch_size = 128, 
-        epochs = 1,
+        epochs = 30,
         verbose = 1, 
     )     
     print('Finished training autorec ...')   
