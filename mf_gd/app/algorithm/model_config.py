@@ -1,5 +1,5 @@
 
-MODEL_NAME = 'Natrix_Factorizer'
+MODEL_NAME = 'Matrix_Factorizer'
 
 
 USER_ID_COL = 'user_id'
