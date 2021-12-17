@@ -1,9 +1,9 @@
 
-data
+source_data
 ml_vol
 all_results
-
+local_test/
 
 *.*checkpoints
 __pycache__/
-*.pyc
+**.pyc

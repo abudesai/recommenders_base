@@ -1,8 +1,8 @@
 Attribute,Value
-Model_Name,Natrix_Factorizer
-mse,17.751
+Model_Name,Matrix_Factorizer
+mse,17.7508
 rmse,4.2132
-mae,3.2306
+mae,3.2305
 nmae,4.3092
-smape,103.9568
+smape,103.957
 r2,0.3668
