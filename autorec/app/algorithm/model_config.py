@@ -28,6 +28,8 @@ PREPROCESSOR_FNAME = 'preprocess_pipe.save'
 MODEL_WTS_FNAME = 'model_weights'
 MODEL_PARAMS_FNAME = 'model_params'
 
+MAX_BATCH_SIZE = 4096
+
 
 # Scoring file name
 SCORING_FNAME = 'scores.csv'

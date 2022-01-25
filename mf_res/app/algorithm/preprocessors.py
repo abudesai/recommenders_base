@@ -79,6 +79,7 @@ class RatingsScaler(BaseEstimator, TransformerMixin):
         
 
     def transform(self, data):
+        if data.empty: return data
         if not self.ratings_col in data.columns: return data   
 
         data[self.ratings_int_col] = self.scaler.transform(data[[self.ratings_col]])

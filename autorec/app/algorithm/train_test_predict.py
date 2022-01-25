@@ -88,11 +88,12 @@ def get_trained_model(training_data, hyper_params):
     print('data based params:',  data_based_params)
     
     model_params = { **data_based_params, **hyper_params }
-    print('model_params:',  model_params)
+    # print('model_params:',  model_params)
     # ------------------------------------------------------------------------
     print('Training AutoRec ...')        
     # Create and train matrix factorization model 
     autorec = AutoRec( **model_params )
+    history = None
     history = autorec.fit(
         train_data_tup = train_data_tup,
         valid_data_tup = valid_data_tup,
@@ -102,23 +103,6 @@ def get_trained_model(training_data, hyper_params):
     )        
     print('Finished training autorec ...')
 
-    # ------------------------------------------------------------------------
-    # test valid predictions
-    # preds = model.predict(valid_X_R, valid_X_M)    
-    # preds_df = get_inverse_transformation(preds, valid_Y_M, valid_user_ids_int, preprocess_pipe)
-
-    # preds_df = valid_data.merge(preds_df[['user_id', 'item_id', 'pred_rating']], on=['user_id', 'item_id'])
-    # preds_df.sort_values(by=['user_id', 'item_id'], inplace=True)
-    
-    # print("="*80)
-    # print("preds_df")
-    # print(preds_df.head())
-
-    # # print('mse',  scoring.get_loss( preds_df['rating_int'], preds_df['pred_rating_int'], 'mse' ))
-    # print('mse',  scoring.get_loss( preds_df['rating'], preds_df['pred_rating'], 'mse' ))
-    
-    # # print('\ncorr act pred int', preds_df[['rating_int', 'pred_rating_int']].corr())
-    # print('\ncorr act pred', preds_df[['rating', 'pred_rating']].corr())
     # ------------------------------------------------------------------------
     return autorec, history, preprocess_pipe
 
@@ -165,44 +149,80 @@ def get_inverse_transformation(preds, mask, users, pipe):
     return preds_df
 
 
-def predict_with_model(predict_data, model, preprocess_pipe): 
-    # transform data
-    print("Preprocessing prediction data... ")
-    test_X_R, test_X_M, test_Y_R, test_Y_M, test_users_int_id = preprocess_pipe.transform(predict_data)
-    # print('processed train data and mask shape:',  test_X_R.shape, test_X_M.shape, test_Y_R.shape, test_Y_M.shape)
+def predict_with_model(predict_data, model, preprocess_pipe):     
+    N = predict_data.shape[0]
+    num_batches = (N // cfg.MAX_BATCH_SIZE) if N % cfg.MAX_BATCH_SIZE == 0 else (N // cfg.MAX_BATCH_SIZE) + 1
+    # print("num_batches", num_batches); sys.exit()
 
-    # make predictions
-    print("Making predictions... ")
-    preds = model.predict(test_X_R, test_X_M )
-    # print("preds shape: ", preds.shape)
+    all_preds = []
+    for i in range(num_batches): 
+        
+        mini_batch = predict_data.iloc[i*cfg.MAX_BATCH_SIZE : (i+1)*cfg.MAX_BATCH_SIZE, :]
 
-    # make inverse transformations on predictions
-    print("Post-processing predictions for writing... ")
-    preds_df = get_inverse_transformation(preds, test_Y_M, test_users_int_id, preprocess_pipe)
+        # transform data
+        test_X_R, test_X_M, test_Y_R, test_Y_M, test_users_int_id = preprocess_pipe.transform(mini_batch)
+        if test_X_R is None or test_X_R is None: continue
 
-    preds_df = predict_data.merge(
-        preds_df[[cfg.USER_ID_COL, cfg.ITEM_ID_COL, cfg.PRED_RATING_COL]], 
-        on=[cfg.USER_ID_COL, cfg.ITEM_ID_COL])    
+        # print('processed train data and mask shape:',  test_X_R.shape, test_X_M.shape, test_Y_R.shape, test_Y_M.shape)
     
-    return preds_df
+        # make predictions
+        preds = model.predict(test_X_R, test_X_M )
+
+        # make inverse transformations on predictions
+        preds_df = get_inverse_transformation(preds, test_Y_M, test_users_int_id, preprocess_pipe)
+
+        preds_df = mini_batch.merge(
+            preds_df[[cfg.USER_ID_COL, cfg.ITEM_ID_COL, cfg.PRED_RATING_COL]], 
+            on=[cfg.USER_ID_COL, cfg.ITEM_ID_COL])   
+        
+        all_preds.append(preds_df)
+    
+    if len(all_preds) == 0:
+        msg = '''
+        Pre-processed prediction data is empty. No predictions to run.
+        This usually occurs if none of the users and/or items in prediction data
+        were present in the training data. 
+        '''
+        print(msg)
+        return None
+    else: 
+
+        all_preds = pd.concat(all_preds, ignore_index=True)
+    
+    return all_preds
+
+
+def clear_predictions_dir(output_path):
+    for fname in os.listdir(output_path):
+        fpath = os.path.join(output_path, fname)
+        os.unlink(fpath)
+
 
 
 def run_predictions(data_fpath, model_path, output_path):
+
+    # clear previous prediction and score files
+    clear_predictions_dir(output_path)
+
     # get test data
     print("Reading prediction data... ")
     test_data = get_data(data_fpath) 
-    # print("test data shape: ", test_data.shape)
+    print("test data shape: ", test_data.shape)
+    
 
     # load the model, and preprocessor 
     print(f"Loading trained {cfg.MODEL_NAME}... ")
     model, preprocess_pipe = load_model_and_preprocessor(model_path)
 
     # get predictions from model
-    print("Making predictions... ")
+    print("Making predictions ...")    
     preds_df = predict_with_model(test_data, model, preprocess_pipe)
         
     print("Saving predictions... ")
-    preds_df.to_csv(os.path.join(output_path, cfg.PREDICTIONS_FNAME), index=False)
+    if preds_df is not None:
+        preds_df.to_csv(os.path.join(output_path, cfg.PREDICTIONS_FNAME), index=False)
+    else: 
+        print("No predictions saved.")
     
     print("Done with predictions.")
     return 0

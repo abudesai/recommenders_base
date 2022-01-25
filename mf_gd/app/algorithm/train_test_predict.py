@@ -121,11 +121,20 @@ def run_training(train_data_path, model_path, logs_path, random_state=42):
 
 def predict_with_model(predict_data, model, preprocess_pipe):
    
-    test_data_cols = list(predict_data.columns)    
+    test_data_cols = list(predict_data.columns)       
 
     # transform data
     proc_test_data = preprocess_pipe.transform(predict_data)
     print("proc_test_data shape: ", proc_test_data.shape)
+
+    if proc_test_data.empty: 
+        msg = '''
+        Pre-processed prediction data is empty. No predictions to run.
+        This usually occurs if none of the users and/or items in prediction data
+        were present in the training data. 
+        '''
+        print(msg)
+        return None
 
     X = proc_test_data[[cfg.USER_ID_INT_COL, cfg.ITEM_ID_INT_COL]]
 
@@ -142,8 +151,19 @@ def predict_with_model(predict_data, model, preprocess_pipe):
     return proc_test_data
 
 
+def clear_predictions_dir(output_path):
+    for fname in os.listdir(output_path):
+        fpath = os.path.join(output_path, fname)
+        os.unlink(fpath)
+
+
+
 def run_predictions(data_fpath, model_path, output_path):
-     # get data
+
+    # clear previous prediction and score files
+    clear_predictions_dir(output_path)
+
+    # get data
     print("Reading prediction data... ")
     test_data = get_data(data_fpath) 
     print("test data shape: ", test_data.shape)
@@ -157,7 +177,10 @@ def run_predictions(data_fpath, model_path, output_path):
     preds_df = predict_with_model(test_data, model, preprocess_pipe)
     
     print("Saving predictions... ")
-    preds_df.to_csv(os.path.join(output_path, cfg.PREDICTIONS_FNAME), index=False)
+    if preds_df is not None:
+        preds_df.to_csv(os.path.join(output_path, cfg.PREDICTIONS_FNAME), index=False)
+    else: 
+        print("No predictions saved.")
 
     print("Done with predictions.")
     return 0
@@ -196,7 +219,7 @@ def get_prediction_score(preds_df):
 def score_predictions(output_path): 
     pred_file = os.path.join(output_path, cfg.PREDICTIONS_FNAME)
     if not os.path.exists(pred_file):
-        err_msg = f"No predictions file found. Expected to find: {pred_file}"
+        err_msg = f"No predictions file found. Expected to find: {pred_file}. No scores generated."
         print(err_msg)
         return err_msg
 

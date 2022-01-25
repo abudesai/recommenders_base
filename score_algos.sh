@@ -64,12 +64,14 @@ docker exec $container_name python predict.py
 #run scoring 
 docker exec $container_name python score.py
 
-# stop and run the container
+
+#---------------------------------------------------------------------------
+# stop and remove the container
 docker stop $container_name
 docker rm $container_name
 
-# remove the image
-docker rmi $image
+# # remove the image
+# docker rmi $image
 
 
 #---------------------------------------------------------------------------

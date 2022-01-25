@@ -11,7 +11,7 @@ app = flask.Flask(__name__)
 
 @app.route("/", methods=["GET"])
 def hello():
-    return f'Hello - I am {cfg.MODEL_NAME} and I am alive!'
+    return f'Hello - I am {cfg.MODEL_NAME} and I am alive!\n'
      
 
 @app.route("/ping", methods=["GET"])

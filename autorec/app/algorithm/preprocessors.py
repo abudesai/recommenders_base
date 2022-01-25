@@ -22,7 +22,7 @@ class UserItemIdMapper(BaseEstimator, TransformerMixin):
 
         self.user_ids = data[[self.user_id_col]].drop_duplicates()
 
-        # self.user_ids = self.user_ids.sample(n=1000, replace=False, random_state=42)        
+        # self.user_ids = self.user_ids.sample(n=50000, replace=False, random_state=42)        
         
         self.user_ids[self.user_id_int_col] = self.user_ids[self.user_id_col].factorize()[0]
         self.users_orig_to_new = dict( zip(self.user_ids[self.user_id_col], 
@@ -80,7 +80,8 @@ class RatingsScaler(BaseEstimator, TransformerMixin):
         return self
         
 
-    def transform(self, data):        
+    def transform(self, data):  
+        if data.empty: return data      
         if not self.ratings_col in data.columns: return data                        
         
         data[self.ratings_int_col] = self.scaler.transform(data[[self.ratings_col]])            
@@ -117,6 +118,7 @@ class SparseMatrixCreator(BaseEstimator, TransformerMixin):
         
 
     def transform(self, df):
+        if df.empty: return (None, None, None, None, None)  
         
         given_N = df[self.user_id_int_col].max() + 1 # number of users
         if given_N > self.N: 

@@ -35,7 +35,7 @@ class AutoRec():
         self.l2_reg = l2_reg
         self.lr = lr
         self.momentum = momentum
-        self.mu = None
+        self.mu = 0.
 
         self.model = self.build_model()
 
@@ -101,7 +101,7 @@ class AutoRec():
         # print("mu: ", self.mu)
 
         early_stop_loss = 'val_loss' if validation_data != None else 'loss'
-        early_stop_callback = EarlyStopping(monitor=early_stop_loss, min_delta = 1e-4, patience=5) 
+        early_stop_callback = EarlyStopping(monitor=early_stop_loss, min_delta = 1e-4, patience=3) 
         infcost_stop_callback = InfCostStopCallback()
 
 
@@ -115,13 +115,13 @@ class AutoRec():
                 verbose=verbose,
                 shuffle=True,
                 callbacks=[early_stop_callback, infcost_stop_callback]
-            )
+            )            
         return history
 
 
     def predict(self, data, data_mask):
         R = data - self.mu * data_mask
-        preds = self.model.predict(R, batch_size=1024) + self.mu
+        preds = self.model.predict(R, batch_size=100) + self.mu
         return preds 
 
     def summary(self):
@@ -144,10 +144,10 @@ class AutoRec():
     @staticmethod
     def load(model_path): 
         model_params = joblib.load(os.path.join(model_path, cfg.MODEL_PARAMS_FNAME))
-        mf = AutoRec(**model_params)
-        mf.mu = model_params['mu']
-        mf.model.load_weights(os.path.join(model_path, cfg.MODEL_WTS_FNAME)).expect_partial()
-        return mf
+        rec_model = AutoRec(**model_params)
+        rec_model.mu = model_params['mu']
+        rec_model.model.load_weights(os.path.join(model_path, cfg.MODEL_WTS_FNAME)).expect_partial()
+        return rec_model
 
 
 if __name__ == '__main__': 
